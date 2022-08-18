@@ -1,5 +1,6 @@
 import type { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow'
 import type { IExecuteFunctions } from 'n8n-core'
+import type { IFieldsValues, IRecord } from './types'
 import { NodeOperationError } from 'n8n-workflow'
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions'
 
@@ -10,7 +11,7 @@ export class AirtablePlus implements INodeType {
     icon: 'file:airtable-plus.svg',
     group: ['input'],
     version: 1,
-    description: 'Read, update, write and delete data from Airtable',
+    description: 'Read, update, upsert, write and delete data from Airtable',
     defaults: {
       name: 'AirtablePlus'
     },
@@ -58,6 +59,12 @@ export class AirtablePlus implements INodeType {
             value: 'update',
             description: 'Update data in a table',
             action: 'Update data in a table'
+          },
+          {
+            name: 'Upsert',
+            value: 'upsert',
+            description: 'Upsert data in a table',
+            action: 'Upsert data in a table'
           }
         ],
         default: 'read'
@@ -348,6 +355,60 @@ export class AirtablePlus implements INodeType {
       },
 
       // ----------------------------------
+      //         upsert
+      // ----------------------------------
+      {
+        displayName: 'Search Formula',
+        name: 'searchFormula',
+        type: 'string',
+        displayOptions: {
+          show: {
+            operation: ['upsert']
+          }
+        },
+        default: '',
+        required: true,
+        description: 'Search formula of the record to upsert'
+      },
+      {
+        displayName: 'Fields',
+        name: 'fields',
+        type: 'fixedCollection',
+        typeOptions: {
+          multipleValues: true,
+          multipleValueButtonText: 'Add Field'
+        },
+        displayOptions: {
+          show: {
+            operation: ['upsert']
+          }
+        },
+        default: [],
+        required: true,
+        description: 'Fields which should be sent to Airtable',
+        options: [
+          {
+            displayName: 'Field',
+            name: 'fieldValues',
+            values: [
+              {
+                displayName: 'Field Name',
+                name: 'fieldName',
+                type: 'string',
+                default: ''
+              },
+              {
+                displayName: 'Field Value',
+                name: 'fieldValue',
+                type: 'string',
+                default: ''
+              }
+            ]
+          }
+        ]
+      },
+
+      // ----------------------------------
       //         append + delete + update
       // ----------------------------------
       {
@@ -409,12 +470,11 @@ export class AirtablePlus implements INodeType {
     const application = this.getNodeParameter('application', 0) as string
     const table = encodeURI(this.getNodeParameter('table', 0) as string)
 
-    const body: IDataObject = {};
+    const body: IDataObject = {}
     const qs: IDataObject = {}
     const returnData: IDataObject[] = []
 
     if (operation === 'append') {
-      const requestMethod = 'POST'
       const endpoint = `${application}/${table}`
       const rows: IDataObject[] = []
 
@@ -445,7 +505,7 @@ export class AirtablePlus implements INodeType {
             body.records = rows
             body.typecast = options.typecast
 
-            const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs)
+            const responseData = await apiRequest.call(this, 'POST', endpoint, body, qs)
             returnData.push(...responseData.records)
 
             rows.length = 0
@@ -459,22 +519,19 @@ export class AirtablePlus implements INodeType {
         }
       }
     } else if (operation === 'delete') {
-      const requestMethod = 'DELETE'
       const endpoint = `${application}/${table}`
-      const rows: string[] = []
-
       const options = this.getNodeParameter('options', 0, {}) as IDataObject
       const bulkSize = typeof options.bulkSize === 'number' ? options.bulkSize : 10
+      const rows: string[] = []
 
       for (let i = 0; i < items.length; i++) {
         try {
-          const id = this.getNodeParameter('id', i) as string
-          rows.push(id)
+          rows.push(this.getNodeParameter('id', i) as string)
 
           if (rows.length === bulkSize || i === items.length - 1) {
             qs.records = rows
 
-            const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs)
+            const responseData = await apiRequest.call(this, 'DELETE', endpoint, body, qs)
             returnData.push(...responseData.records)
 
             rows.length = 0
@@ -489,9 +546,7 @@ export class AirtablePlus implements INodeType {
       }
     } else if (operation === 'list') {
       try {
-        const requestMethod = 'GET'
         const endpoint = `${application}/${table}`
-
         const returnAll = this.getNodeParameter('returnAll', 0) as boolean
         const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean
         const additionalOptions = this.getNodeParameter('additionalOptions', 0, {}) as IDataObject
@@ -507,10 +562,10 @@ export class AirtablePlus implements INodeType {
         let responseData
 
         if (returnAll) {
-          responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs)
+          responseData = await apiRequestAllItems.call(this, 'GET', endpoint, body, qs)
         } else {
           qs.maxRecords = this.getNodeParameter('limit', 0) as number
-          responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs)
+          responseData = await apiRequest.call(this, 'GET', endpoint, body, qs)
         }
 
         returnData.push(...responseData.records)
@@ -528,14 +583,12 @@ export class AirtablePlus implements INodeType {
         }
       }
     } else if (operation === 'read') {
-      const requestMethod = 'GET'
-
       for (let i = 0; i < items.length; i++) {
         try {
           const id = this.getNodeParameter('id', i) as string
           const endpoint = `${application}/${table}/${id}`
 
-          const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs)
+          const responseData = await apiRequest.call(this, 'GET', endpoint, body, qs)
           returnData.push(responseData)
         } catch (err) {
           if (this.continueOnFail()) {
@@ -546,7 +599,6 @@ export class AirtablePlus implements INodeType {
         }
       }
     } else if (operation === 'update') {
-      const requestMethod = 'PATCH'
       const endpoint = `${application}/${table}`
       const rows: IDataObject[] = []
 
@@ -556,7 +608,6 @@ export class AirtablePlus implements INodeType {
           const options = this.getNodeParameter('options', i, {}) as IDataObject
           const ignoreFields = typeof options.ignoreFields === 'string' ? options.ignoreFields : ''
           const bulkSize = typeof options.bulkSize === 'number' ? options.bulkSize : 10
-
           const row: IDataObject = {}
 
           if (updateAllFields) {
@@ -593,10 +644,43 @@ export class AirtablePlus implements INodeType {
             body.records = rows
             body.typecast = options.typecast
 
-            const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs)
+            const responseData = await apiRequest.call(this, 'PATCH', endpoint, body, qs)
             returnData.push(...responseData.records)
 
             rows.length = 0
+          }
+        } catch (err) {
+          if (this.continueOnFail()) {
+            returnData.push({ error: err.message })
+          } else {
+            throw err
+          }
+        }
+      }
+    } else if (operation === 'upsert') {
+      const endpoint = `${application}/${table}`
+
+      for (let i = 0; i < items.length; i++) {
+        try {
+          const searchFormula = this.getNodeParameter('searchFormula', i, {}) as string
+          const fields = this.getNodeParameter('fields.fieldValues', i, []) as IFieldsValues[]
+
+          const row: IDataObject = {
+            fields: fields.reduce<IDataObject>((obj, item) => ({ ...obj, [item.fieldName]: item.fieldValue }), {})
+          }
+
+          qs.filterByFormula = searchFormula
+          const responseDataExists = await apiRequest.call(this, 'GET', endpoint, {}, qs)
+
+          if (responseDataExists.records.length === 0) {
+            const responseData = await apiRequest.call(this, 'POST', endpoint, [row], {})
+            returnData.push(...responseData.records)
+          } else {
+            const existingRecord = responseDataExists.records[0] as IRecord
+            row.id = existingRecord.id
+
+            const responseData = await apiRequest.call(this, 'PATCH', endpoint, [row], {})
+            returnData.push(...responseData.records)
           }
         } catch (err) {
           if (this.continueOnFail()) {

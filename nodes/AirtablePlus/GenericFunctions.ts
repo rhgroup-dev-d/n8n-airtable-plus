@@ -1,19 +1,8 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeExecutionData } from 'n8n-workflow'
 import type { IExecuteFunctions, IPollFunctions } from 'n8n-core'
 import type { OptionsWithUri } from 'request'
+import type { IAttachment, IRecord } from './types'
 import { NodeApiError } from 'n8n-workflow'
-
-interface IAttachment {
-  url: string
-  filename: string
-  type: string
-}
-
-export interface IRecord {
-  fields: {
-    [key: string]: string | IAttachment[]
-  }
-}
 
 export async function apiRequest (
   this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
