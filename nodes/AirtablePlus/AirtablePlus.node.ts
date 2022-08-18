@@ -185,6 +185,7 @@ export class AirtablePlus implements INodeType {
           }
         },
         default: [],
+        placeholder: 'Add Field',
         required: true,
         description: 'Fields which should be sent to Airtable',
         options: [
@@ -370,24 +371,26 @@ export class AirtablePlus implements INodeType {
 
       for (let i = 0; i < items.length; i++) {
         try {
-          const searchFormula = this.getNodeParameter('searchFormula', i, {}) as string
           const fields = this.getNodeParameter('fields.fieldValues', i, []) as IFieldsValues[]
 
           const row: IDataObject = {
             fields: fields.reduce<IDataObject>((obj, item) => ({ ...obj, [item.fieldName]: item.fieldValue }), {})
           }
 
-          qs.filterByFormula = searchFormula
+          qs.filterByFormula = this.getNodeParameter('searchFormula', i) as string
           const responseDataExists = await apiRequest.call(this, 'GET', endpoint, {}, qs)
 
           if (responseDataExists.records.length === 0) {
-            const responseData = await apiRequest.call(this, 'POST', endpoint, [row], {})
+            body.records = [row]
+
+            const responseData = await apiRequest.call(this, 'POST', endpoint, body, {})
             returnData.push(...responseData.records)
           } else {
             const existingRecord = responseDataExists.records[0] as IRecord
             row.id = existingRecord.id
+            body.records = [row]
 
-            const responseData = await apiRequest.call(this, 'PATCH', endpoint, [row], {})
+            const responseData = await apiRequest.call(this, 'PATCH', endpoint, body, {})
             returnData.push(...responseData.records)
           }
         } catch (err) {
