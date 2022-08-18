@@ -6,7 +6,7 @@ import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './Gen
 export class AirtablePlus implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'AirtablePlus',
-    name: 'airtable',
+    name: 'airtable-plus',
     icon: 'file:airtable-plus.svg',
     group: ['input'],
     version: 1,
