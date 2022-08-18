@@ -2,7 +2,7 @@ import type { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription }
 import type { IExecuteFunctions } from 'n8n-core'
 import type { IFieldsValues, IRecord } from './types'
 import { NodeOperationError } from 'n8n-workflow'
-import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions'
+import { apiRequest } from './GenericFunctions'
 
 export class AirtablePlus implements INodeType {
   description: INodeTypeDescription = {
@@ -11,7 +11,7 @@ export class AirtablePlus implements INodeType {
     icon: 'file:airtable-plus.svg',
     group: ['input'],
     version: 1,
-    description: 'Read, update, upsert, write and delete data from Airtable',
+    description: 'Append, update, and upsert data from Airtable',
     defaults: {
       name: 'AirtablePlus'
     },
@@ -37,24 +37,6 @@ export class AirtablePlus implements INodeType {
             action: 'Append data to a table'
           },
           {
-            name: 'Delete',
-            value: 'delete',
-            description: 'Delete data from a table',
-            action: 'Delete data from a table'
-          },
-          {
-            name: 'List',
-            value: 'list',
-            description: 'List data from a table',
-            action: 'List data from a table'
-          },
-          {
-            name: 'Read',
-            value: 'read',
-            description: 'Read data from a table',
-            action: 'Read data from a table'
-          },
-          {
             name: 'Update',
             value: 'update',
             description: 'Update data in a table',
@@ -67,7 +49,7 @@ export class AirtablePlus implements INodeType {
             action: 'Upsert data in a table'
           }
         ],
-        default: 'read'
+        default: 'append'
       },
 
       // ----------------------------------
@@ -123,187 +105,6 @@ export class AirtablePlus implements INodeType {
         placeholder: 'Name',
         required: true,
         description: 'The name of fields for which data should be sent to Airtable'
-      },
-
-      // ----------------------------------
-      //         delete
-      // ----------------------------------
-      {
-        displayName: 'ID',
-        name: 'id',
-        type: 'string',
-        displayOptions: {
-          show: {
-            operation: ['delete']
-          }
-        },
-        default: '',
-        required: true,
-        description: 'ID of the record to delete'
-      },
-
-      // ----------------------------------
-      //         list
-      // ----------------------------------
-      {
-        displayName: 'Return All',
-        name: 'returnAll',
-        type: 'boolean',
-        displayOptions: {
-          show: {
-            operation: ['list']
-          }
-        },
-        default: true,
-        description: 'Whether to return all results or only up to a given limit'
-      },
-      {
-        displayName: 'Limit',
-        name: 'limit',
-        type: 'number',
-        displayOptions: {
-          show: {
-            operation: ['list'],
-            returnAll: [false]
-          }
-        },
-        typeOptions: {
-          minValue: 1,
-          maxValue: 100
-        },
-        default: 100,
-        description: 'Max number of results to return'
-      },
-      {
-        displayName: 'Download Attachments',
-        name: 'downloadAttachments',
-        type: 'boolean',
-        displayOptions: {
-          show: {
-            operation: ['list']
-          }
-        },
-        default: false,
-        description: 'Whether the attachment fields define in \'Download Fields\' will be downloaded'
-      },
-      {
-        displayName: 'Download Fields',
-        name: 'downloadFieldNames',
-        type: 'string',
-        required: true,
-        displayOptions: {
-          show: {
-            operation: ['list'],
-            downloadAttachments: [true]
-          }
-        },
-        default: '',
-        description: 'Name of the fields of type \'attachment\' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.'
-      },
-      {
-        displayName: 'Additional Options',
-        name: 'additionalOptions',
-        type: 'collection',
-        displayOptions: {
-          show: {
-            operation: ['list']
-          }
-        },
-        default: {},
-        description: 'Additional options which decide which records should be returned',
-        placeholder: 'Add Option',
-        options: [
-          {
-            displayName: 'Fields',
-            name: 'fields',
-            type: 'string',
-            typeOptions: {
-              multipleValues: true,
-              multipleValueButtonText: 'Add Field'
-            },
-            default: [],
-            placeholder: 'Name',
-            description: 'Only data for fields whose names are in this list will be included in the records'
-          },
-          {
-            displayName: 'Filter By Formula',
-            name: 'filterByFormula',
-            type: 'string',
-            default: '',
-            placeholder: 'NOT({Name} = \'\')',
-            description: 'A formula used to filter records. The formula will be evaluated for each record, and if the result is not 0, false, "", NaN, [], or #Error! the record will be included in the response.'
-          },
-          {
-            displayName: 'Sort',
-            name: 'sort',
-            placeholder: 'Add Sort Rule',
-            description: 'Defines how the returned records should be ordered',
-            type: 'fixedCollection',
-            typeOptions: {
-              multipleValues: true
-            },
-            default: {},
-            options: [
-              {
-                name: 'property',
-                displayName: 'Property',
-                values: [
-                  {
-                    displayName: 'Field',
-                    name: 'field',
-                    type: 'string',
-                    default: '',
-                    description: 'Name of the field to sort on'
-                  },
-                  {
-                    displayName: 'Direction',
-                    name: 'direction',
-                    type: 'options',
-                    options: [
-                      {
-                        name: 'ASC',
-                        value: 'asc',
-                        description: 'Sort in ascending order (small -> large)'
-                      },
-                      {
-                        name: 'DESC',
-                        value: 'desc',
-                        description: 'Sort in descending order (large -> small)'
-                      }
-                    ],
-                    default: 'asc',
-                    description: 'The sort direction'
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            displayName: 'View',
-            name: 'view',
-            type: 'string',
-            default: '',
-            placeholder: 'Grid view',
-            description: 'The name or ID of a view in the table. If set, only the records in that view will be returned. The records will be sorted according to the order of the view.'
-          }
-        ]
-      },
-
-      // ----------------------------------
-      //         read
-      // ----------------------------------
-      {
-        displayName: 'ID',
-        name: 'id',
-        type: 'string',
-        displayOptions: {
-          show: {
-            operation: ['read']
-          }
-        },
-        default: '',
-        required: true,
-        description: 'ID of the record to return'
       },
 
       // ----------------------------------
@@ -409,7 +210,7 @@ export class AirtablePlus implements INodeType {
       },
 
       // ----------------------------------
-      //         append + delete + update
+      //         append + update
       // ----------------------------------
       {
         displayName: 'Options',
@@ -418,7 +219,7 @@ export class AirtablePlus implements INodeType {
         placeholder: 'Add Option',
         displayOptions: {
           show: {
-            operation: ['append', 'delete', 'update']
+            operation: ['append', 'update']
           }
         },
         default: {},
@@ -433,19 +234,6 @@ export class AirtablePlus implements INodeType {
             },
             default: 10,
             description: 'Number of records to process at once'
-          },
-          {
-            displayName: 'Ignore Fields',
-            name: 'ignoreFields',
-            type: 'string',
-            displayOptions: {
-              show: {
-                '/operation': ['update'],
-                '/updateAllFields': [true]
-              }
-            },
-            default: '',
-            description: 'Comma-separated list of fields to ignore'
           },
           {
             displayName: 'Typecast',
@@ -510,86 +298,6 @@ export class AirtablePlus implements INodeType {
 
             rows.length = 0
           }
-        } catch (err) {
-          if (this.continueOnFail()) {
-            returnData.push({ error: err.message })
-          } else {
-            throw err
-          }
-        }
-      }
-    } else if (operation === 'delete') {
-      const endpoint = `${application}/${table}`
-      const options = this.getNodeParameter('options', 0, {}) as IDataObject
-      const bulkSize = typeof options.bulkSize === 'number' ? options.bulkSize : 10
-      const rows: string[] = []
-
-      for (let i = 0; i < items.length; i++) {
-        try {
-          rows.push(this.getNodeParameter('id', i) as string)
-
-          if (rows.length === bulkSize || i === items.length - 1) {
-            qs.records = rows
-
-            const responseData = await apiRequest.call(this, 'DELETE', endpoint, body, qs)
-            returnData.push(...responseData.records)
-
-            rows.length = 0
-          }
-        } catch (err) {
-          if (this.continueOnFail()) {
-            returnData.push({ error: err.message })
-          } else {
-            throw err
-          }
-        }
-      }
-    } else if (operation === 'list') {
-      try {
-        const endpoint = `${application}/${table}`
-        const returnAll = this.getNodeParameter('returnAll', 0) as boolean
-        const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean
-        const additionalOptions = this.getNodeParameter('additionalOptions', 0, {}) as IDataObject
-
-        for (const key of Object.keys(additionalOptions)) {
-          if (key === 'sort' && (additionalOptions.sort as IDataObject).property !== undefined) {
-            qs[key] = (additionalOptions[key] as IDataObject).property
-          } else {
-            qs[key] = additionalOptions[key]
-          }
-        }
-
-        let responseData
-
-        if (returnAll) {
-          responseData = await apiRequestAllItems.call(this, 'GET', endpoint, body, qs)
-        } else {
-          qs.maxRecords = this.getNodeParameter('limit', 0) as number
-          responseData = await apiRequest.call(this, 'GET', endpoint, body, qs)
-        }
-
-        returnData.push(...responseData.records)
-
-        if (downloadAttachments) {
-          const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',')
-          const data = await downloadRecordAttachments.call(this, responseData.records, downloadFieldNames)
-          return [data]
-        }
-      } catch (err) {
-        if (this.continueOnFail()) {
-          returnData.push({ error: err.message })
-        } else {
-          throw err
-        }
-      }
-    } else if (operation === 'read') {
-      for (let i = 0; i < items.length; i++) {
-        try {
-          const id = this.getNodeParameter('id', i) as string
-          const endpoint = `${application}/${table}/${id}`
-
-          const responseData = await apiRequest.call(this, 'GET', endpoint, body, qs)
-          returnData.push(responseData)
         } catch (err) {
           if (this.continueOnFail()) {
             returnData.push({ error: err.message })

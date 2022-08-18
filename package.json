@@ -24,9 +24,7 @@
   ],
   "n8n": {
     "n8nNodesApiVersion": 1,
-    "credentials": [
-      "dist/credentials/AirtablePlusApi.credentials.js"
-    ],
+    "credentials": [],
     "nodes": [
       "dist/nodes/AirtablePlus/AirtablePlus.node.js"
     ]
