@@ -2,6 +2,7 @@ import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow'
 import type { IExecuteFunctions, IPollFunctions } from 'n8n-core'
 import type { OptionsWithUri } from 'request'
 import { NodeApiError } from 'n8n-workflow'
+import { IFieldsValues } from './types'
 
 export async function apiRequest (
   this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -37,4 +38,11 @@ export async function apiRequest (
   } catch (err) {
     throw new NodeApiError(this.getNode(), err)
   }
+}
+
+export function getFields (
+  this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+  fields: IFieldsValues[]
+): IDataObject {
+  return fields.reduce<IDataObject>((obj, item) => ({ ...obj, [item.fieldName]: item.fieldValue }), {})
 }

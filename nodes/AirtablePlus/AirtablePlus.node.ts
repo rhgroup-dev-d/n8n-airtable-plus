@@ -2,7 +2,7 @@ import type { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription }
 import type { IExecuteFunctions } from 'n8n-core'
 import type { IFieldsValues, IRecord } from './types'
 import { NodeOperationError } from 'n8n-workflow'
-import { apiRequest } from './GenericFunctions'
+import { apiRequest, getFields } from './GenericFunctions'
 
 export class AirtablePlus implements INodeType {
   description: INodeTypeDescription = {
@@ -75,37 +75,6 @@ export class AirtablePlus implements INodeType {
       // ----------------------------------
       //         append
       // ----------------------------------
-      {
-        displayName: 'Add All Fields',
-        name: 'addAllFields',
-        type: 'boolean',
-        displayOptions: {
-          show: {
-            operation: ['append']
-          }
-        },
-        default: true,
-        description: 'Whether all fields should be sent to Airtable or only specific ones'
-      },
-      {
-        displayName: 'Fields',
-        name: 'fields',
-        type: 'string',
-        typeOptions: {
-          multipleValues: true,
-          multipleValueButtonText: 'Add Field'
-        },
-        displayOptions: {
-          show: {
-            addAllFields: [false],
-            operation: ['append']
-          }
-        },
-        default: [],
-        placeholder: 'Name',
-        required: true,
-        description: 'The name of fields for which data should be sent to Airtable'
-      },
 
       // ----------------------------------
       //         update
@@ -122,37 +91,6 @@ export class AirtablePlus implements INodeType {
         default: '',
         required: true,
         description: 'ID of the record to update'
-      },
-      {
-        displayName: 'Update All Fields',
-        name: 'updateAllFields',
-        type: 'boolean',
-        displayOptions: {
-          show: {
-            operation: ['update']
-          }
-        },
-        default: true,
-        description: 'Whether all fields should be sent to Airtable or only specific ones'
-      },
-      {
-        displayName: 'Fields',
-        name: 'fields',
-        type: 'string',
-        typeOptions: {
-          multipleValues: true,
-          multipleValueButtonText: 'Add Field'
-        },
-        displayOptions: {
-          show: {
-            updateAllFields: [false],
-            operation: ['update']
-          }
-        },
-        default: [],
-        placeholder: 'Name',
-        required: true,
-        description: 'The name of fields for which data should be sent to Airtable'
       },
 
       // ----------------------------------
@@ -171,6 +109,10 @@ export class AirtablePlus implements INodeType {
         required: true,
         description: 'Search formula of the record to upsert'
       },
+
+      // ----------------------------------
+      //         append + update + upsert
+      // ----------------------------------
       {
         displayName: 'Fields',
         name: 'fields',
@@ -181,12 +123,11 @@ export class AirtablePlus implements INodeType {
         },
         displayOptions: {
           show: {
-            operation: ['upsert']
+            operation: ['append', 'update', 'upsert']
           }
         },
         default: [],
         placeholder: 'Add Field',
-        required: true,
         description: 'Fields which should be sent to Airtable',
         options: [
           {
@@ -209,10 +150,6 @@ export class AirtablePlus implements INodeType {
           }
         ]
       },
-
-      // ----------------------------------
-      //         append + update
-      // ----------------------------------
       {
         displayName: 'Options',
         name: 'options',
@@ -220,7 +157,7 @@ export class AirtablePlus implements INodeType {
         placeholder: 'Add Option',
         displayOptions: {
           show: {
-            operation: ['append', 'update']
+            operation: ['append', 'update', 'upsert']
           }
         },
         default: {},
@@ -233,6 +170,11 @@ export class AirtablePlus implements INodeType {
               minValue: 1,
               maxValue: 10
             },
+            displayOptions: {
+              show: {
+                '/operation': ['append', 'update']
+              }
+            },
             default: 10,
             description: 'Number of records to process at once'
           },
@@ -242,7 +184,7 @@ export class AirtablePlus implements INodeType {
             type: 'boolean',
             displayOptions: {
               show: {
-                '/operation': ['append', 'update']
+                '/operation': ['append', 'update', 'upsert']
               }
             },
             default: false,
@@ -269,23 +211,11 @@ export class AirtablePlus implements INodeType {
 
       for (let i = 0; i < items.length; i++) {
         try {
-          const addAllFields = this.getNodeParameter('addAllFields', i) as boolean
           const options = this.getNodeParameter('options', i, {}) as IDataObject
           const bulkSize = typeof options.bulkSize === 'number' ? options.bulkSize : 10
-          const row: IDataObject = {}
 
-          if (addAllFields) {
-            row.fields = { ...items[i].json }
-            // @ts-expect-error
-            delete row.fields.id
-          } else {
-            const fields = this.getNodeParameter('fields', i, []) as string[]
-            row.fields = {}
-
-            for (const fieldName of fields) {
-              // @ts-expect-error
-              row.fields[fieldName] = items[i].json[fieldName]
-            }
+          const row: IDataObject = {
+            fields: getFields.call(this, this.getNodeParameter('fields.fieldValues', i, []) as IFieldsValues[])
           }
 
           rows.push(row)
@@ -313,37 +243,11 @@ export class AirtablePlus implements INodeType {
 
       for (let i = 0; i < items.length; i++) {
         try {
-          const updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean
           const options = this.getNodeParameter('options', i, {}) as IDataObject
-          const ignoreFields = typeof options.ignoreFields === 'string' ? options.ignoreFields : ''
           const bulkSize = typeof options.bulkSize === 'number' ? options.bulkSize : 10
-          const row: IDataObject = {}
 
-          if (updateAllFields) {
-            row.fields = { ...items[i].json }
-            // @ts-expect-error
-            delete row.fields.id
-
-            if (ignoreFields !== '') {
-              const ignoredFields = ignoreFields
-                .split(',')
-                .map(field => field.trim())
-                .filter(field => field.length !== 0)
-
-              if (ignoredFields.length !== 0) {
-                row.fields = Object.entries(items[i].json)
-                  .filter(([key]) => !ignoredFields.includes(key))
-                  .reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {})
-              }
-            }
-          } else {
-            const fields = this.getNodeParameter('fields', i, []) as string[]
-            row.fields = {}
-
-            for (const fieldName of fields) {
-              // @ts-expect-error
-              row.fields[fieldName] = items[i].json[fieldName]
-            }
+          const row: IDataObject = {
+            fields: getFields.call(this, this.getNodeParameter('fields.fieldValues', i, []) as IFieldsValues[])
           }
 
           row.id = this.getNodeParameter('id', i) as string
@@ -371,10 +275,10 @@ export class AirtablePlus implements INodeType {
 
       for (let i = 0; i < items.length; i++) {
         try {
-          const fields = this.getNodeParameter('fields.fieldValues', i, []) as IFieldsValues[]
+          const options = this.getNodeParameter('options', i, {}) as IDataObject
 
           const row: IDataObject = {
-            fields: fields.reduce<IDataObject>((obj, item) => ({ ...obj, [item.fieldName]: item.fieldValue }), {})
+            fields: getFields.call(this, this.getNodeParameter('fields.fieldValues', i, []) as IFieldsValues[])
           }
 
           qs.filterByFormula = this.getNodeParameter('searchFormula', i) as string
@@ -382,13 +286,16 @@ export class AirtablePlus implements INodeType {
 
           if (responseDataExists.records.length === 0) {
             body.records = [row]
+            body.typecast = options.typecast
 
             const responseData = await apiRequest.call(this, 'POST', endpoint, body, {})
             returnData.push(...responseData.records)
           } else {
             const existingRecord = responseDataExists.records[0] as IRecord
+
             row.id = existingRecord.id
             body.records = [row]
+            body.typecast = options.typecast
 
             const responseData = await apiRequest.call(this, 'PATCH', endpoint, body, {})
             returnData.push(...responseData.records)
