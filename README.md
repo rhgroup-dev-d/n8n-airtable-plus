@@ -1,11 +1,7 @@
 # n8n-nodes-rhgroup
 
-This is an n8n community node. It lets you use RHGroup in your n8n workflows.
-
+This is an n8n community node. It lets you use RHGroup in your n8n workflows. \
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
-
-[Installation](#installation)
-[Resources](#resources)
 
 ## Installation
 
