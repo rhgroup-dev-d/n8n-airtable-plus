@@ -5,7 +5,7 @@
 			"es2019"
 		],
 		"types": [
-			"node",
+			"node"
 		],
 		"module": "commonjs",
 		"noImplicitAny": true,
@@ -17,14 +17,15 @@
 		"declaration": true,
 		"outDir": "./dist/",
 		"target": "es2019",
+		"rootDir": "./",
 		"sourceMap": true,
 		"esModuleInterop": true,
-		"useUnknownInCatchVariables": false,
+		"useUnknownInCatchVariables": false
 	},
 	"include": [
 		"credentials/**/*",
 		"nodes/**/*",
 		"nodes/**/*.json",
-		"package.json",
-	],
+		"package.json"
+	]
 }
