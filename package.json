@@ -1,10 +1,11 @@
 {
   "name": "n8n-nodes-rhgroup",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "n8n node for RHGroup company",
   "author": "rhgroup-dev-d",
-  "repository": "github:rhgroup-dev-d/n8n-nodes-rhgroup",
+  "license": "MIT",
   "main": "index.js",
+  "repository": "github:rhgroup-dev-d/n8n-nodes-rhgroup",
   "devDependencies": {
     "@types/express": "^4.17.13",
     "@types/request-promise-native": "^1.0.18",
