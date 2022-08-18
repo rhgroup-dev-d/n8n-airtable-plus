@@ -1,9 +1,9 @@
 {
-  "name": "n8n-nodes-airtable-plus",
+  "name": "n8n-nodes-rhgroup",
   "version": "0.1.0",
-  "description": "",
+  "description": "n8n node for RHGroup company",
   "author": "rhgroup-dev-d",
-  "repository": "github:rhgroup-dev-d/n8n-airtable-plus",
+  "repository": "github:rhgroup-dev-d/n8n-nodes-rhgroup",
   "main": "index.js",
   "devDependencies": {
     "@types/node": "^18.7.6",
@@ -16,6 +16,9 @@
   },
   "files": [
     "dist"
+  ],
+  "keywords": [
+    "n8n-community-node-package"
   ],
   "n8n": {
     "n8nNodesApiVersion": 1,
