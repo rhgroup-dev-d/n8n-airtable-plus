@@ -409,8 +409,9 @@ export class AirtablePlus implements INodeType {
     const application = this.getNodeParameter('application', 0) as string
     const table = encodeURI(this.getNodeParameter('table', 0) as string)
 
-    const returnData: IDataObject[] = []
+    const body: IDataObject = {};
     const qs: IDataObject = {}
+    const returnData: IDataObject[] = []
 
     if (operation === 'append') {
       const requestMethod = 'POST'
@@ -441,10 +442,12 @@ export class AirtablePlus implements INodeType {
           rows.push(row)
 
           if (rows.length === bulkSize || i === items.length - 1) {
-            const body = { records: rows, typecast: options.typecast }
-            const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs)
+            body.records = rows
+            body.typecast = options.typecast
 
+            const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs)
             returnData.push(...responseData.records)
+
             rows.length = 0
           }
         } catch (err) {
@@ -459,6 +462,7 @@ export class AirtablePlus implements INodeType {
       const requestMethod = 'DELETE'
       const endpoint = `${application}/${table}`
       const rows: string[] = []
+
       const options = this.getNodeParameter('options', 0, {}) as IDataObject
       const bulkSize = typeof options.bulkSize === 'number' ? options.bulkSize : 10
 
@@ -469,10 +473,11 @@ export class AirtablePlus implements INodeType {
 
           if (rows.length === bulkSize || i === items.length - 1) {
             qs.records = rows
-            rows.length = 0
 
-            const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs)
+            const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs)
             returnData.push(...responseData.records)
+
+            rows.length = 0
           }
         } catch (err) {
           if (this.continueOnFail()) {
@@ -486,6 +491,7 @@ export class AirtablePlus implements INodeType {
       try {
         const requestMethod = 'GET'
         const endpoint = `${application}/${table}`
+
         const returnAll = this.getNodeParameter('returnAll', 0) as boolean
         const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean
         const additionalOptions = this.getNodeParameter('additionalOptions', 0, {}) as IDataObject
@@ -501,10 +507,10 @@ export class AirtablePlus implements INodeType {
         let responseData
 
         if (returnAll) {
-          responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, {}, qs)
+          responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs)
         } else {
           qs.maxRecords = this.getNodeParameter('limit', 0) as number
-          responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs)
+          responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs)
         }
 
         returnData.push(...responseData.records)
@@ -525,11 +531,11 @@ export class AirtablePlus implements INodeType {
       const requestMethod = 'GET'
 
       for (let i = 0; i < items.length; i++) {
-        const id = this.getNodeParameter('id', i) as string
-        const endpoint = `${application}/${table}/${id}`
-
         try {
-          const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs)
+          const id = this.getNodeParameter('id', i) as string
+          const endpoint = `${application}/${table}/${id}`
+
+          const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs)
           returnData.push(responseData)
         } catch (err) {
           if (this.continueOnFail()) {
@@ -550,6 +556,7 @@ export class AirtablePlus implements INodeType {
           const options = this.getNodeParameter('options', i, {}) as IDataObject
           const ignoreFields = typeof options.ignoreFields === 'string' ? options.ignoreFields : ''
           const bulkSize = typeof options.bulkSize === 'number' ? options.bulkSize : 10
+
           const row: IDataObject = {}
 
           if (updateAllFields) {
@@ -583,10 +590,12 @@ export class AirtablePlus implements INodeType {
           rows.push(row)
 
           if (rows.length === bulkSize || i === items.length - 1) {
-            const data = { records: rows, typecast: options.typecast }
-            const responseData = await apiRequest.call(this, requestMethod, endpoint, data, qs)
+            body.records = rows
+            body.typecast = options.typecast
 
+            const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs)
             returnData.push(...responseData.records)
+
             rows.length = 0
           }
         } catch (err) {

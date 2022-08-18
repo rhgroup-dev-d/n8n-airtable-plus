@@ -40,7 +40,7 @@ export async function apiRequest (
     Object.assign(options, option)
   }
 
-  if (Object.keys(body).length === 0) {
+  if (Object.keys(options.body).length === 0) {
     delete options.body
   }
 
