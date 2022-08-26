@@ -1,14 +1,15 @@
 {
-  "node": "n8n-nodes-base.airtable-plus",
+  "node": "n8n-nodes-base.json",
   "nodeVersion": "1.0",
   "codexVersion": "1.0",
   "categories": [
-    "Data & Storage"
+    "Core Nodes",
+    "Development"
   ],
   "resources": {
     "primaryDocumentation": [
       {
-        "url": "https://docs.n8n.io/nodes/n8n-nodes-base.airtable-plus/"
+        "url": "https://docs.n8n.io/nodes/n8n-nodes-base.json/"
       }
     ]
   }
