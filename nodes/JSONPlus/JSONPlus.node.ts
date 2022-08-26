@@ -16,12 +16,12 @@ export class JSONPlus implements INodeType {
     outputs: ['main'],
     properties: [
       {
-        displayName: 'Value',
-        name: 'value',
+        displayName: 'Expression',
+        name: 'expression',
         type: 'string',
         default: '',
         required: true,
-        description: 'JSON value you want to get'
+        description: 'JSON value expression'
       }
     ]
   }
@@ -32,7 +32,7 @@ export class JSONPlus implements INodeType {
 
     for (let i = 0; i < items.length; i++) {
       try {
-        returnData.push(this.getNodeParameter('value', i) as IDataObject)
+        returnData.push(this.getNodeParameter('expression', i) as IDataObject)
       } catch (err) {
         if (this.continueOnFail()) {
           returnData.push({ error: err.message })
@@ -42,6 +42,10 @@ export class JSONPlus implements INodeType {
       }
     }
 
-    return [this.helpers.returnJsonArray(returnData)]
+    if (returnData.length === 1) {
+      return [this.helpers.returnJsonArray(returnData[0])]
+    } else {
+      return [this.helpers.returnJsonArray(returnData)]
+    }
   }
 }
