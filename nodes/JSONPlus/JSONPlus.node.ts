@@ -1,16 +1,16 @@
 import type { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow'
 import type { IExecuteFunctions } from 'n8n-core'
 
-export class JSON implements INodeType {
+export class JSONPlus implements INodeType {
   description: INodeTypeDescription = {
-    displayName: 'JSON',
-    name: 'json',
-    icon: 'file:json.svg',
+    displayName: 'JSONPlus',
+    name: 'json-plus',
+    icon: 'file:json-plus.svg',
     group: ['transform'],
     version: 1,
     description: 'Get custom JSON value',
     defaults: {
-      name: 'JSON'
+      name: 'JSONPlus'
     },
     inputs: ['main'],
     outputs: ['main'],

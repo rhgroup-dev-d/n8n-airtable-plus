@@ -1,17 +1,17 @@
 {
-  "node": "n8n-nodes-base.json",
+  "node": "n8n-nodes-base.json-plus",
   "nodeVersion": "1.0",
   "codexVersion": "1.0",
   "categories": [
     "Core Nodes",
-    "Data & Storage",
     "Development",
+    "Data & Storage",
     "Utility"
   ],
   "resources": {
     "primaryDocumentation": [
       {
-        "url": "https://docs.n8n.io/nodes/n8n-nodes-base.json/"
+        "url": "https://docs.n8n.io/nodes/n8n-nodes-base.json-plus/"
       }
     ]
   },
