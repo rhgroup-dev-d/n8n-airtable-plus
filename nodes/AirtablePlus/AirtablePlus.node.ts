@@ -4,7 +4,7 @@ import type { IFieldsValues, IRecord } from './types'
 import { NodeOperationError } from 'n8n-workflow'
 import { apiRequest, getFields } from './GenericFunctions'
 
-export class AirtablePlusNode implements INodeType {
+export class AirtablePlus implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'AirtablePlus',
     name: 'airtable-plus',

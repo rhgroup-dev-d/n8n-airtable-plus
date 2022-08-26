@@ -1,7 +1,7 @@
 import type { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow'
 import type { IExecuteFunctions } from 'n8n-core'
 
-export class JSONNode implements INodeType {
+export class JSON implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'JSON',
     name: 'json',
@@ -27,7 +27,7 @@ export class JSONNode implements INodeType {
   }
 
   async execute (this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-    const items = JSON.parse(JSON.stringify(this.getInputData()))
+    const items = this.getInputData()
     const returnData: IDataObject[] = []
 
     for (let i = 0; i < items.length; i++) {
