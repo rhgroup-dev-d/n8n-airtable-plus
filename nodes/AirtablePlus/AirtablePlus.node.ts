@@ -197,7 +197,7 @@ export class AirtablePlus implements INodeType {
 
   async execute (this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const items = this.getInputData()
-    const operation = this.getNodeParameter('operation', 0) as string
+    const operation = this.getNodeParameter('operation', 0)
     const application = this.getNodeParameter('application', 0) as string
     const table = encodeURI(this.getNodeParameter('table', 0) as string)
 
@@ -211,7 +211,7 @@ export class AirtablePlus implements INodeType {
 
       for (let i = 0; i < items.length; i++) {
         try {
-          const options = this.getNodeParameter('options', i, {}) as IDataObject
+          const options = this.getNodeParameter('options', i, {})
           const bulkSize = typeof options.bulkSize === 'number' ? options.bulkSize : 10
 
           const row: IDataObject = {
@@ -243,7 +243,7 @@ export class AirtablePlus implements INodeType {
 
       for (let i = 0; i < items.length; i++) {
         try {
-          const options = this.getNodeParameter('options', i, {}) as IDataObject
+          const options = this.getNodeParameter('options', i, {})
           const bulkSize = typeof options.bulkSize === 'number' ? options.bulkSize : 10
 
           const row: IDataObject = {
@@ -275,7 +275,7 @@ export class AirtablePlus implements INodeType {
 
       for (let i = 0; i < items.length; i++) {
         try {
-          const options = this.getNodeParameter('options', i, {}) as IDataObject
+          const options = this.getNodeParameter('options', i, {})
 
           const row: IDataObject = {
             fields: getFields.call(this, this.getNodeParameter('fields.fieldValues', i, []) as IFieldsValues[])
