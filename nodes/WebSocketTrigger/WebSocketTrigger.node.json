@@ -1,5 +1,5 @@
 {
-  "node": "n8n-nodes-base.websocket",
+  "node": "n8n-nodes-base.webSocketTrigger",
   "nodeVersion": "1.0",
   "codexVersion": "1.0",
   "categories": [
@@ -9,12 +9,14 @@
   "resources": {
     "primaryDocumentation": [
       {
-        "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.websocket/"
+        "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webSocketTrigger/"
       }
     ]
   },
   "alias": [
-    "WS"
+    "Socket",
+    "WS",
+    "WSS"
   ],
   "subcategories": {
     "Core Nodes": [
