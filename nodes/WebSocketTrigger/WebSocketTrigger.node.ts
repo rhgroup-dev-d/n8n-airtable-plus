@@ -1,8 +1,15 @@
 import type { INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow'
 import type { ITriggerFunctions } from 'n8n-core'
+import WebSocket from 'ws'
 import { NodeOperationError, WorkflowExecuteMode } from 'n8n-workflow'
 import { NodeVM } from 'vm2'
-import { WebSocket } from 'ws'
+
+const defaultOpenEventCode = `// Add your code here
+$send({
+  action: 'register',
+  accessCode: $accessCode
+})
+`
 
 async function execCode (
   ctx: Record<string, any>,
@@ -55,10 +62,10 @@ export class WebSocketTrigger implements INodeType {
         displayName: 'Open Event Code',
         name: 'openEventCode',
         typeOptions: {
-          editor: 'code'
+          editor: 'codeNodeEditor'
         },
         type: 'string',
-        default: '',
+        default: defaultOpenEventCode,
         description: 'Code to execute when connected to socket',
         noDataExpression: true
       }
@@ -85,7 +92,13 @@ export class WebSocketTrigger implements INodeType {
         $accessToken: accessToken,
         $getNodeParameter: this.getNodeParameter,
         $getWorkflowStaticData: this.getWorkflowStaticData,
-        $send: client.send.bind(client),
+        $send: (message: any) => {
+          if (typeof message === 'string') {
+            client.send(message)
+          } else {
+            client.send(JSON.stringify(message))
+          }
+        },
         helpers: this.helpers
       }
 
