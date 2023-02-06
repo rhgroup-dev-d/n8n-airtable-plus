@@ -1,17 +1,22 @@
-import type { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow'
+import type { INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow'
 import type { ITriggerFunctions } from 'n8n-core'
-import { NodeOperationError } from 'n8n-workflow'
+import { NodeOperationError, WorkflowExecuteMode } from 'n8n-workflow'
+import { NodeVM } from 'vm2'
 import { WebSocket } from 'ws'
 
-function wsDataToObject (data: any): IDataObject {
-  const payload = Array.isArray(data)
-    ? data.map(it => it.toString()).join('')
-    : data.toString()
+async function execCode (
+  ctx: Record<string, any>,
+  workflowMode: WorkflowExecuteMode,
+  code: string
+): Promise<void> {
+  const sandbox = new NodeVM({
+    console: workflowMode === 'manual' ? 'redirect' : 'inherit',
+    sandbox: ctx
+  })
 
   try {
-    return JSON.parse(payload)
+    await sandbox.run(`module.exports = async function() {${code}\n}()`, __dirname)
   } catch {
-    return { ...payload.split('') }
   }
 }
 
@@ -33,7 +38,7 @@ export class WebSocketTrigger implements INodeType {
     credentials: [
       {
         name: 'oAuth2Api',
-        required: true
+        required: false
       }
     ],
     properties: [
@@ -50,60 +55,89 @@ export class WebSocketTrigger implements INodeType {
         displayName: 'Open Event Code',
         name: 'openEventCode',
         typeOptions: {
-          editor: 'codeNodeEditor'
+          editor: 'code'
         },
         type: 'string',
         default: '',
-        description: 'TODO',
+        description: 'Code to execute when connected to socket',
         noDataExpression: true
       }
     ]
   }
 
   async trigger (this: ITriggerFunctions): Promise<ITriggerResponse> {
+    const workflowMode = this.getMode()
     const uri = this.getNodeParameter('uri', 0) as string
-    let accessToken: string | null = null
+    let accessToken: string = ''
 
     try {
       const oAuth2Api = await this.getCredentials('oAuth2Api')
-      accessToken = (oAuth2Api.oauthTokenData as any).access_token ?? null
+      accessToken = (oAuth2Api?.oauthTokenData as any)?.access_token ?? ''
     } catch {
-    }
-
-    if (accessToken === null) {
-      throw new NodeOperationError(this.getNode(), 'OAuth2 credentials are not initialized')
     }
 
     const client = new WebSocket(uri)
 
-    const result: ITriggerResponse = {
-      manualTriggerFunction: async () => {
-        await new Promise((resolve, reject) => {
-          client.on('open', () => {
-            console.log('connection open')
-          })
+    function handleOpen (this: ITriggerFunctions): void {
+      const openEventCode = this.getNodeParameter('openEventCode', 0) as string
 
-          client.on('message', (data) => {
-            const message = wsDataToObject(data)
-            this.emit([this.helpers.returnJsonArray(message)])
-
-            resolve(true)
-          })
-
-          client.on('error', (err) => {
-            reject(err)
-          })
-        })
-      },
-      closeFunction: async () => {
-        client.terminate()
+      const ctx = {
+        $accessToken: accessToken,
+        $getNodeParameter: this.getNodeParameter,
+        $getWorkflowStaticData: this.getWorkflowStaticData,
+        $send: client.send.bind(client),
+        helpers: this.helpers
       }
+
+      execCode(ctx, workflowMode, openEventCode)
+        .catch((err) => {
+          throw new NodeOperationError(this.getNode(), err.message)
+        })
+    }
+
+    function handleMessage (this: ITriggerFunctions, data: any): void {
+      const payload = Array.isArray(data)
+        ? data.map(it => it.toString()).join('')
+        : data.toString()
+
+      let message
+
+      try {
+        message = JSON.parse(payload)
+      } catch {
+        message = { ...payload.split('') }
+      }
+
+      this.emit([this.helpers.returnJsonArray(message)])
+    }
+
+    async function manualTriggerFunction (this: ITriggerFunctions): Promise<void> {
+      await new Promise((resolve, reject) => {
+        client.on('open', handleOpen.bind(this))
+
+        client.on('message', (data) => {
+          handleMessage.call(this, data)
+          resolve(true)
+        })
+
+        client.on('error', (err) => {
+          this.emitError(err)
+          reject(err)
+        })
+      })
+    }
+
+    async function closeFunction (this: ITriggerFunctions): Promise<void> {
+      client.terminate()
     }
 
     if (this.getMode() === 'trigger') {
-      await result.manualTriggerFunction?.()
+      await manualTriggerFunction.call(this)
     }
 
-    return result
+    return {
+      closeFunction: closeFunction.bind(this),
+      manualTriggerFunction: manualTriggerFunction.bind(this)
+    }
   }
 }

@@ -17,6 +17,7 @@
     "n8n-workflow": "^0.133.1",
     "ts-standard": "^12.0.2",
     "typescript": "^4.9.4",
+    "vm2": "^3.9.14",
     "ws": "^8.12.0"
   },
   "files": [
