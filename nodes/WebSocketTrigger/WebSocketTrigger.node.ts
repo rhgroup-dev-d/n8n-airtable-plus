@@ -134,16 +134,16 @@ export class WebSocketTrigger implements INodeType {
         client.on('open', () => {
           handleOpen.call(this)
             .then(() => {
-              resolve(true)
+              client.on('message', (data) => {
+                const message = parseMessage(data)
+
+                this.emit([this.helpers.returnJsonArray(message)])
+                resolve(true)
+              })
             })
             .catch((err) => {
               throw new NodeOperationError(this.getNode(), err.message)
             })
-        })
-
-        client.on('message', (data) => {
-          const message = parseMessage(data)
-          this.emit([this.helpers.returnJsonArray(message)])
         })
 
         client.on('error', (err) => {
