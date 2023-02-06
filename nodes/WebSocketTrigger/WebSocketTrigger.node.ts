@@ -1,7 +1,7 @@
 import type { INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow'
 import type { ITriggerFunctions } from 'n8n-core'
 import WebSocket from 'ws'
-import { NodeOperationError, WorkflowExecuteMode } from 'n8n-workflow'
+import { NodeOperationError } from 'n8n-workflow'
 import { NodeVM } from 'vm2'
 
 const defaultOpenEventCode = `// Add your code here
@@ -12,13 +12,9 @@ $send({
 
 const message = await $waitMessage()`
 
-async function execCode (
-  ctx: Record<string, any>,
-  workflowMode: WorkflowExecuteMode,
-  code: string
-): Promise<void> {
+async function execCode (ctx: Record<string, any>, code: string): Promise<void> {
   const sandbox = new NodeVM({
-    console: workflowMode === 'manual' ? 'redirect' : 'inherit',
+    console: 'inherit',
     sandbox: ctx
   })
 
@@ -116,7 +112,7 @@ export class WebSocketTrigger implements INodeType {
             client.send(JSON.stringify(data))
           }
         },
-        $waitMessage: async (): Promise<Record<string, any>> => {
+        $waitMessage: async (): Promise<any> => {
           return await new Promise((resolve) => {
             client.once('message', (data) => {
               resolve(parseMessage(data))
@@ -126,7 +122,7 @@ export class WebSocketTrigger implements INodeType {
         helpers: this.helpers
       }
 
-      await execCode(ctx, workflowMode, openEventCode)
+      await execCode(ctx, openEventCode)
     }
 
     async function manualTriggerFunction (this: ITriggerFunctions): Promise<void> {
