@@ -28,7 +28,8 @@
     "credentials": [],
     "nodes": [
       "dist/nodes/AirtablePlus/AirtablePlus.node.js",
-      "dist/nodes/JSONPlus/JSONPlus.node.js"
+      "dist/nodes/JSONPlus/JSONPlus.node.js",
+      "dist/nodes/WebSocket/WebSocket.node.js"
     ]
   },
   "scripts": {
