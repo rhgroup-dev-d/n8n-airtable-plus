@@ -8,9 +8,7 @@ const defaultOpenEventCode = `// Add your code here
 $send({
   action: 'register',
   accessCode: $accessCode
-})
-
-const message = await $waitMessage()`
+})`
 
 async function execCode (ctx: Record<string, any>, code: string): Promise<void> {
   const sandbox = new NodeVM({
@@ -105,19 +103,20 @@ export class WebSocketTrigger implements INodeType {
         $accessToken: accessToken,
         $getNodeParameter: this.getNodeParameter,
         $getWorkflowStaticData: this.getWorkflowStaticData,
-        $send: (data: any): void => {
+        $send: async (data: any, waitResponse = false): Promise<any> => {
           if (typeof data === 'string') {
             client.send(data)
           } else {
             client.send(JSON.stringify(data))
           }
-        },
-        $waitMessage: async (): Promise<any> => {
-          return await new Promise((resolve) => {
-            client.once('message', (data) => {
-              resolve(parseMessage(data))
+
+          if (waitResponse) {
+            return await new Promise((resolve) => {
+              client.once('message', (data) => {
+                resolve(parseMessage(data))
+              })
             })
-          })
+          }
         },
         helpers: this.helpers
       }
