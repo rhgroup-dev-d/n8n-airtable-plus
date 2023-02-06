@@ -9,7 +9,8 @@ $send({
   action: 'register',
   accessCode: $accessCode
 })
-`
+
+const message = await $waitMessage()`
 
 async function execCode (
   ctx: Record<string, any>,
@@ -25,6 +26,22 @@ async function execCode (
     await sandbox.run(`module.exports = async function() {${code}\n}()`, __dirname)
   } catch {
   }
+}
+
+function parseMessage (data: any): Record<string, any> {
+  const payload = Array.isArray(data)
+    ? data.map(it => it.toString()).join('')
+    : data.toString()
+
+  let message
+
+  try {
+    message = JSON.parse(payload)
+  } catch {
+    message = { ...payload.split('') }
+  }
+
+  return message
 }
 
 export class WebSocketTrigger implements INodeType {
@@ -62,7 +79,7 @@ export class WebSocketTrigger implements INodeType {
         displayName: 'Open Event Code',
         name: 'openEventCode',
         typeOptions: {
-          editor: 'codeNodeEditor'
+          editor: 'code'
         },
         type: 'string',
         default: defaultOpenEventCode,
@@ -85,52 +102,48 @@ export class WebSocketTrigger implements INodeType {
 
     const client = new WebSocket(uri)
 
-    function handleOpen (this: ITriggerFunctions): void {
+    async function handleOpen (this: ITriggerFunctions): Promise<void> {
       const openEventCode = this.getNodeParameter('openEventCode', 0) as string
 
       const ctx = {
         $accessToken: accessToken,
         $getNodeParameter: this.getNodeParameter,
         $getWorkflowStaticData: this.getWorkflowStaticData,
-        $send: (message: any) => {
-          if (typeof message === 'string') {
-            client.send(message)
+        $send: (data: any): void => {
+          if (typeof data === 'string') {
+            client.send(data)
           } else {
-            client.send(JSON.stringify(message))
+            client.send(JSON.stringify(data))
           }
+        },
+        $waitMessage: async (): Promise<Record<string, any>> => {
+          return await new Promise((resolve) => {
+            client.once('message', (data) => {
+              resolve(parseMessage(data))
+            })
+          })
         },
         helpers: this.helpers
       }
 
-      execCode(ctx, workflowMode, openEventCode)
-        .catch((err) => {
-          throw new NodeOperationError(this.getNode(), err.message)
-        })
-    }
-
-    function handleMessage (this: ITriggerFunctions, data: any): void {
-      const payload = Array.isArray(data)
-        ? data.map(it => it.toString()).join('')
-        : data.toString()
-
-      let message
-
-      try {
-        message = JSON.parse(payload)
-      } catch {
-        message = { ...payload.split('') }
-      }
-
-      this.emit([this.helpers.returnJsonArray(message)])
+      await execCode(ctx, workflowMode, openEventCode)
     }
 
     async function manualTriggerFunction (this: ITriggerFunctions): Promise<void> {
       await new Promise((resolve, reject) => {
-        client.on('open', handleOpen.bind(this))
+        client.on('open', () => {
+          handleOpen.call(this)
+            .then(() => {
+              resolve(true)
+            })
+            .catch((err) => {
+              throw new NodeOperationError(this.getNode(), err.message)
+            })
+        })
 
         client.on('message', (data) => {
-          handleMessage.call(this, data)
-          resolve(true)
+          const message = parseMessage(data)
+          this.emit([this.helpers.returnJsonArray(message)])
         })
 
         client.on('error', (err) => {
@@ -144,7 +157,7 @@ export class WebSocketTrigger implements INodeType {
       client.terminate()
     }
 
-    if (this.getMode() === 'trigger') {
+    if (workflowMode === 'trigger') {
       await manualTriggerFunction.call(this)
     }
 
