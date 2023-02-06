@@ -41,22 +41,30 @@ export class WebSocket implements INodeType {
         default: '',
         description: 'TODO',
         noDataExpression: true
-      },
-      {
-        displayName: 'Message Event Code',
-        name: 'messageEventCode',
-        typeOptions: {
-          editor: 'codeNodeEditor'
-        },
-        type: 'string',
-        default: '',
-        description: 'TODO',
-        noDataExpression: true
       }
+      // {
+      //   displayName: 'Message Event Code',
+      //   name: 'messageEventCode',
+      //   typeOptions: {
+      //     editor: 'codeNodeEditor'
+      //   },
+      //   type: 'string',
+      //   default: '',
+      //   description: 'TODO',
+      //   noDataExpression: true
+      // }
     ]
   }
 
   async execute (this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-    return [this.helpers.returnJsonArray([{}])]
+    let oAuth2Api
+
+    try {
+      oAuth2Api = await this.getCredentials('oAuth2Api')
+    } catch (_) {
+    }
+
+    const data = JSON.parse(JSON.stringify(oAuth2Api))
+    return [this.helpers.returnJsonArray([data])]
   }
 }
