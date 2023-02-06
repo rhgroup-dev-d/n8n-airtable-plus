@@ -1,5 +1,6 @@
 import type { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow'
 import type { ITriggerFunctions } from 'n8n-core'
+import { NodeOperationError } from 'n8n-workflow'
 import { WebSocket } from 'ws'
 
 function wsDataToObject (data: any): IDataObject {
@@ -70,7 +71,7 @@ export class WebSocketTrigger implements INodeType {
     }
 
     if (accessToken === null) {
-      accessToken = ''
+      throw new NodeOperationError(this.getNode(), 'OAuth2 credentials are not initialized')
     }
 
     const client = new WebSocket(uri)
@@ -100,7 +101,7 @@ export class WebSocketTrigger implements INodeType {
     }
 
     if (this.getMode() === 'trigger') {
-      await result.manualTriggerFunction()
+      await result.manualTriggerFunction?.()
     }
 
     return result
