@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-rhgroup",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "n8n node for RHGroup company",
   "author": "rhgroup-dev-d",
   "license": "MIT",
