@@ -1,7 +1,6 @@
 import type { INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow'
 import type { ITriggerFunctions } from 'n8n-core'
 import WebSocket from 'ws'
-import { NodeOperationError } from 'n8n-workflow'
 import { NodeVM } from 'vm2'
 
 const defaultOpenEventCode = `// Add your code here
@@ -16,10 +15,7 @@ async function execCode (ctx: Record<string, any>, code: string): Promise<void> 
     sandbox: ctx
   })
 
-  try {
-    await sandbox.run(`module.exports = async function() {${code}\n}()`, __dirname)
-  } catch {
-  }
+  await sandbox.run(`module.exports = async function() {${code}\n}()`, __dirname)
 }
 
 function parseMessage (data: any): Record<string, any> {
@@ -110,9 +106,6 @@ export class WebSocketTrigger implements INodeType {
 
       const ctx = {
         $auth: auth,
-        $error: (message: string) => {
-          return new NodeOperationError(this.getNode(), message)
-        },
         $getNodeParameter: this.getNodeParameter,
         $getWorkflowStaticData: this.getWorkflowStaticData,
         $send: async (data: any, waitResponse = false): Promise<any> => {
