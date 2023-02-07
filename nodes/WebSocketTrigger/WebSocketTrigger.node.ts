@@ -86,11 +86,14 @@ export class WebSocketTrigger implements INodeType {
   async trigger (this: ITriggerFunctions): Promise<ITriggerResponse> {
     const workflowMode = this.getMode()
     const uri = this.getNodeParameter('uri', 0) as string
-    let accessToken: string = ''
+    let accessToken = ''
 
     try {
       const oAuth2Api = await this.getCredentials('oAuth2Api')
-      accessToken = (oAuth2Api?.oauthTokenData as any)?.access_token ?? ''
+      const oAuthTokenData = oAuth2Api?.oauthTokenData as any
+
+      accessToken = oAuthTokenData?.access_token ?? ''
+      console.log(JSON.stringify(oAuth2Api))
     } catch {
     }
 
@@ -103,6 +106,9 @@ export class WebSocketTrigger implements INodeType {
         $accessToken: accessToken,
         $getNodeParameter: this.getNodeParameter,
         $getWorkflowStaticData: this.getWorkflowStaticData,
+        $panic: (message: string) => {
+          return new NodeOperationError(this.getNode(), message)
+        },
         $send: async (data: any, waitResponse = false): Promise<any> => {
           if (typeof data === 'string') {
             client.send(data)
@@ -131,13 +137,13 @@ export class WebSocketTrigger implements INodeType {
             .then(() => {
               client.on('message', (data) => {
                 const message = parseMessage(data)
-
                 this.emit([this.helpers.returnJsonArray(message)])
-                resolve(true)
               })
+
+              resolve(true)
             })
             .catch((err) => {
-              throw new NodeOperationError(this.getNode(), err.message)
+              reject(err)
             })
         })
 
