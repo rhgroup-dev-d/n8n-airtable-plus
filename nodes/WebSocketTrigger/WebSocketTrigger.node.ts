@@ -132,6 +132,8 @@ export class WebSocketTrigger implements INodeType {
     async function manualTriggerFunction (this: ITriggerFunctions): Promise<void> {
       await new Promise((resolve, reject) => {
         client.on('open', () => {
+          console.log('opened websocket')
+
           handleOpen.call(this)
             .then(() => {
               client.on('message', (data) => {
