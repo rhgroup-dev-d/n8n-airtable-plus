@@ -15,7 +15,7 @@ async function execCode (ctx: Record<string, any>, code: string): Promise<void> 
     sandbox: ctx
   })
 
-  await sandbox.run(`module.exports = async function() {${code}\n}()`, __dirname)
+  await sandbox.run(`module.exports = async function () {${code}\n}()`, __dirname)
 }
 
 function parseMessage (data: any): Record<string, any> {
@@ -146,7 +146,13 @@ export class WebSocketTrigger implements INodeType {
             })
         })
 
+        client.on('close', () => {
+          console.log('closed websocket')
+        })
+
         client.on('error', (err) => {
+          console.log('errored websocket')
+          console.error(err)
           this.emitError(err)
           reject(err)
         })
