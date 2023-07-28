@@ -130,6 +130,8 @@ export class WebSocketTrigger implements INodeType {
     }
 
     async function manualTriggerFunction (this: ITriggerFunctions): Promise<void> {
+      console.log('connecting websocket')
+
       await new Promise((resolve, reject) => {
         client.on('open', () => {
           console.log('opened websocket')
@@ -137,13 +139,17 @@ export class WebSocketTrigger implements INodeType {
           handleOpen.call(this)
             .then(() => {
               client.on('message', (data) => {
+                console.log('received websocket message')
                 const message = parseMessage(data)
+                console.log(message)
                 this.emit([this.helpers.returnJsonArray(message)])
               })
 
               resolve(true)
             })
             .catch((err) => {
+              console.log('errored websocket')
+              console.error(err)
               reject(err)
             })
         })
@@ -158,10 +164,23 @@ export class WebSocketTrigger implements INodeType {
           this.emitError(err)
           reject(err)
         })
+
+        client.on('ping', () => {
+          console.log('ping websocket')
+        })
+
+        client.on('pong', () => {
+          console.log('pong websocket')
+        })
+
+        client.on('unexpected-response', () => {
+          console.log('unexpected response websocket')
+        })
       })
     }
 
     async function closeFunction (this: ITriggerFunctions): Promise<void> {
+      console.log('manual close websocket')
       client.terminate()
     }
 
