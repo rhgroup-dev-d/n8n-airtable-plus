@@ -100,6 +100,7 @@ export class WebSocketTrigger implements INodeType {
     }
 
     const client = new WebSocket(uri)
+    let clientManuallyClosed = false
 
     async function handleOpen (this: ITriggerFunctions): Promise<void> {
       const openEventCode = this.getNodeParameter('openEventCode', 0) as string
@@ -156,6 +157,17 @@ export class WebSocketTrigger implements INodeType {
 
         client.on('close', () => {
           console.log('closed websocket')
+          const clientWasManuallyClosed = clientManuallyClosed
+          clientManuallyClosed = false
+
+          if (!clientWasManuallyClosed) {
+            console.log('reconnecting websocket')
+
+            manualTriggerFunction.call(this).catch((err) => {
+              console.log('failed to reconnect websocket')
+              console.error(err)
+            })
+          }
         })
 
         client.on('error', (err) => {
@@ -181,6 +193,7 @@ export class WebSocketTrigger implements INodeType {
 
     async function closeFunction (this: ITriggerFunctions): Promise<void> {
       console.log('manual close websocket')
+      clientManuallyClosed = true
       client.terminate()
     }
 
