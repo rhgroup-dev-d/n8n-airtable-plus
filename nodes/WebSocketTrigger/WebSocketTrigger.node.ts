@@ -149,7 +149,7 @@ export class WebSocketTrigger implements INodeType {
               resolve(true)
             })
             .catch((err) => {
-              console.log('errored websocket')
+              console.log('errored websocket 1')
               console.error(err)
               reject(err)
             })
@@ -171,22 +171,10 @@ export class WebSocketTrigger implements INodeType {
         })
 
         client.on('error', (err) => {
-          console.log('errored websocket')
+          console.log('errored websocket 2')
           console.error(err)
           this.emitError(err)
           reject(err)
-        })
-
-        client.on('ping', () => {
-          console.log('ping websocket')
-        })
-
-        client.on('pong', () => {
-          console.log('pong websocket')
-        })
-
-        client.on('unexpected-response', () => {
-          console.log('unexpected response websocket')
         })
       })
     }
