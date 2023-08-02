@@ -131,17 +131,17 @@ export class WebSocketTrigger implements INodeType {
     }
 
     async function manualTriggerFunction (this: ITriggerFunctions): Promise<void> {
-      console.log('connecting websocket')
-
       await new Promise((resolve, reject) => {
+        console.log('connecting websocket')
+
         client.on('open', () => {
           console.log('opened websocket')
 
           handleOpen.call(this)
             .then(() => {
               client.on('message', (data) => {
-                console.log('received websocket message')
                 const message = parseMessage(data)
+                console.log('received websocket message')
                 console.log(message)
                 this.emit([this.helpers.returnJsonArray(message)])
               })
@@ -157,16 +157,11 @@ export class WebSocketTrigger implements INodeType {
 
         client.on('close', () => {
           console.log('closed websocket')
-          const clientWasManuallyClosed = clientManuallyClosed
-          clientManuallyClosed = false
 
-          if (!clientWasManuallyClosed) {
-            console.log('reconnecting websocket')
-
-            manualTriggerFunction.call(this).catch((err) => {
-              console.log('failed to reconnect websocket')
-              console.error(err)
-            })
+          if (!clientManuallyClosed) {
+            const err = new Error('WebSocket connection closed unexpectedly')
+            console.error(err)
+            this.emitError(err)
           }
         })
 
@@ -174,7 +169,10 @@ export class WebSocketTrigger implements INodeType {
           console.log('errored websocket 2')
           console.error(err)
           this.emitError(err)
-          reject(err)
+        })
+
+        client.on('ping', () => {
+          console.log('ping')
         })
       })
     }
@@ -186,6 +184,7 @@ export class WebSocketTrigger implements INodeType {
     }
 
     if (workflowMode === 'trigger') {
+      console.log('manually enabling workflow')
       await manualTriggerFunction.call(this)
     }
 
