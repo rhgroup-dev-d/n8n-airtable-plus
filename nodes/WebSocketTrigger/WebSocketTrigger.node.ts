@@ -122,7 +122,7 @@ export class WebSocketTrigger implements INodeType {
         }
       }
 
-      const script = new VMScript(`async function () {${openEventCode}\n}()`)
+      const script = new VMScript(`async function main () {${openEventCode}\n} main()`)
       vmCreateContext(ctx)
       script.runInContext(ctx)
     }
