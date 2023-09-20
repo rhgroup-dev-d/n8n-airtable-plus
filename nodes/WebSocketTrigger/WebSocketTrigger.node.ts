@@ -1,22 +1,13 @@
 import type { INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow'
 import type { ITriggerFunctions } from 'n8n-core'
 import WebSocket from 'ws'
-import { NodeVM } from 'vm2'
+import ivm from 'isolated-vm'
 
 const defaultOpenEventCode = `// Add your code here
 $send({
   action: 'register',
   accessCode: $accessCode
 })`
-
-async function execCode (ctx: Record<string, any>, code: string): Promise<void> {
-  const sandbox = new NodeVM({
-    console: 'inherit',
-    sandbox: ctx
-  })
-
-  await sandbox.run(`module.exports = async function () {${code}\n}()`, __dirname)
-}
 
 function parseMessage (data: any): Record<string, any> {
   const payload = Array.isArray(data)
@@ -107,30 +98,47 @@ export class WebSocketTrigger implements INodeType {
 
     async function handleOpen (this: ITriggerFunctions): Promise<void> {
       const openEventCode = this.getNodeParameter('openEventCode', 0) as string
+      const isolate = new ivm.Isolate({ memoryLimit: 128 })
+      const script = isolate.compileScriptSync(`module.exports = async function () {${openEventCode}\n}()`)
+      const context = isolate.createContextSync()
+      const jail = context.global
 
-      const ctx = {
-        $auth: auth,
-        $getNodeParameter: this.getNodeParameter,
-        $getWorkflowStaticData: this.getWorkflowStaticData,
-        $send: async (data: any, waitResponse = false): Promise<any> => {
-          if (typeof data === 'string') {
-            client.current.send(data)
-          } else {
-            client.current.send(JSON.stringify(data))
-          }
+      jail.setSync('global', jail.derefInto())
 
-          if (waitResponse) {
-            return await new Promise((resolve) => {
-              client.current.once('message', (data) => {
-                resolve(parseMessage(data))
-              })
+      jail.setSync('error', (...args: any[]): void => {
+        console.error(...args)
+      })
+
+      jail.setSync('info', (...args: any[]): void => {
+        console.info(...args)
+      })
+
+      jail.setSync('log', (...args: any[]): void => {
+        console.log(...args)
+      })
+
+      jail.setSync('$auth', auth)
+      jail.setSync('$getNodeParameter', this.getNodeParameter)
+      jail.setSync('$getWorkflowStaticData', this.getWorkflowStaticData)
+      jail.setSync('helpers', this.helpers)
+
+      jail.setSync('$send', async (data: any, waitResponse = false): Promise<any> => {
+        if (typeof data === 'string') {
+          client.current.send(data)
+        } else {
+          client.current.send(JSON.stringify(data))
+        }
+
+        if (waitResponse) {
+          return await new Promise((resolve) => {
+            client.current.once('message', (data) => {
+              resolve(parseMessage(data))
             })
-          }
-        },
-        helpers: this.helpers
-      }
+          })
+        }
+      })
 
-      await execCode(ctx, openEventCode)
+      script.runSync(context)
     }
 
     async function handleConnect (this: ITriggerFunctions): Promise<void> {

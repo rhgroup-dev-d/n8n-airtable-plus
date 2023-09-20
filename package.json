@@ -17,7 +17,6 @@
     "n8n-workflow": "^0.143.0",
     "ts-standard": "^12.0.0",
     "typescript": "^5.1.0",
-    "vm2": "^3.9.0",
     "ws": "^8.13.0"
   },
   "files": [
@@ -41,5 +40,8 @@
     "lint": "ts-standard",
     "prepare": "husky install",
     "prepublishOnly": "npm run build && npm run lint"
+  },
+  "dependencies": {
+    "isolated-vm": "^4.6.0"
   }
 }
