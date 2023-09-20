@@ -99,7 +99,10 @@ export class WebSocketTrigger implements INodeType {
     } catch {
     }
 
-    const client = new WebSocket(uri)
+    const client = {
+      current: new WebSocket(uri)
+    }
+
     let clientManuallyClosed = false
 
     async function handleOpen (this: ITriggerFunctions): Promise<void> {
@@ -111,14 +114,14 @@ export class WebSocketTrigger implements INodeType {
         $getWorkflowStaticData: this.getWorkflowStaticData,
         $send: async (data: any, waitResponse = false): Promise<any> => {
           if (typeof data === 'string') {
-            client.send(data)
+            client.current.send(data)
           } else {
-            client.send(JSON.stringify(data))
+            client.current.send(JSON.stringify(data))
           }
 
           if (waitResponse) {
             return await new Promise((resolve) => {
-              client.once('message', (data) => {
+              client.current.once('message', (data) => {
                 resolve(parseMessage(data))
               })
             })
@@ -130,16 +133,18 @@ export class WebSocketTrigger implements INodeType {
       await execCode(ctx, openEventCode)
     }
 
-    async function manualTriggerFunction (this: ITriggerFunctions): Promise<void> {
+    async function handleConnect (this: ITriggerFunctions): Promise<void> {
+      client.current = new WebSocket(uri)
+
       await new Promise((resolve, reject) => {
         console.log('connecting websocket')
 
-        client.on('open', () => {
+        client.current.on('open', () => {
           console.log('opened websocket')
 
           handleOpen.call(this)
             .then(() => {
-              client.on('message', (data) => {
+              client.current.on('message', (data) => {
                 const message = parseMessage(data)
                 console.log('received websocket message')
                 console.log(message)
@@ -155,32 +160,38 @@ export class WebSocketTrigger implements INodeType {
             })
         })
 
-        client.on('close', () => {
+        client.current.on('close', () => {
           console.log('closed websocket')
 
           if (!clientManuallyClosed) {
             const err = new Error('WebSocket connection closed unexpectedly')
             console.error(err)
-            this.emitError(err)
+
+            setTimeout(() => {
+              handleConnect.bind(this)()
+                .catch((err) => {
+                  console.log('errored websocket 2')
+                  console.error(err)
+                })
+            }, 5000)
           }
         })
 
-        client.on('error', (err) => {
-          console.log('errored websocket 2')
+        client.current.on('error', (err) => {
+          console.log('errored websocket 3')
           console.error(err)
-          this.emitError(err)
-        })
-
-        client.on('ping', () => {
-          console.log('ping')
         })
       })
+    }
+
+    async function manualTriggerFunction (this: ITriggerFunctions): Promise<void> {
+      await handleConnect.bind(this)()
     }
 
     async function closeFunction (this: ITriggerFunctions): Promise<void> {
       console.log('manual close websocket')
       clientManuallyClosed = true
-      client.terminate()
+      client.current.terminate()
     }
 
     if (workflowMode === 'trigger') {
