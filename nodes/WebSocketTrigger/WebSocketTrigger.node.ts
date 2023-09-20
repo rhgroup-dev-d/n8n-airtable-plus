@@ -1,7 +1,7 @@
 import type { INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow'
 import type { ITriggerFunctions } from 'n8n-core'
 import WebSocket from 'ws'
-import ivm from 'isolated-vm'
+import { Script as VMScript, createContext as vmCreateContext } from 'vm'
 
 const defaultOpenEventCode = `// Add your code here
 $send({
@@ -98,47 +98,33 @@ export class WebSocketTrigger implements INodeType {
 
     async function handleOpen (this: ITriggerFunctions): Promise<void> {
       const openEventCode = this.getNodeParameter('openEventCode', 0) as string
-      const isolate = new ivm.Isolate({ memoryLimit: 128 })
-      const script = isolate.compileScriptSync(`module.exports = async function () {${openEventCode}\n}()`)
-      const context = isolate.createContextSync()
-      const jail = context.global
 
-      jail.setSync('global', jail.derefInto())
+      const ctx = {
+        $auth: auth,
+        $getNodeParameter: this.getNodeParameter,
+        $getWorkflowStaticData: this.getWorkflowStaticData,
+        helpers: this.helpers,
 
-      jail.setSync('error', (...args: any[]): void => {
-        console.error(...args)
-      })
+        $send: async (data: any, waitResponse = false): Promise<any> => {
+          if (typeof data === 'string') {
+            client.current.send(data)
+          } else {
+            client.current.send(JSON.stringify(data))
+          }
 
-      jail.setSync('info', (...args: any[]): void => {
-        console.info(...args)
-      })
-
-      jail.setSync('log', (...args: any[]): void => {
-        console.log(...args)
-      })
-
-      jail.setSync('$auth', auth)
-      jail.setSync('$getNodeParameter', this.getNodeParameter)
-      jail.setSync('$getWorkflowStaticData', this.getWorkflowStaticData)
-      jail.setSync('helpers', this.helpers)
-
-      jail.setSync('$send', async (data: any, waitResponse = false): Promise<any> => {
-        if (typeof data === 'string') {
-          client.current.send(data)
-        } else {
-          client.current.send(JSON.stringify(data))
-        }
-
-        if (waitResponse) {
-          return await new Promise((resolve) => {
-            client.current.once('message', (data) => {
-              resolve(parseMessage(data))
+          if (waitResponse) {
+            return await new Promise((resolve) => {
+              client.current.once('message', (data) => {
+                resolve(parseMessage(data))
+              })
             })
-          })
+          }
         }
-      })
+      }
 
-      script.runSync(context)
+      const script = new VMScript(`module.exports = async function () {${openEventCode}\n}()`)
+      vmCreateContext(ctx)
+      script.runInContext(ctx)
     }
 
     async function handleConnect (this: ITriggerFunctions): Promise<void> {
