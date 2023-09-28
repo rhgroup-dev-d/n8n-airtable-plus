@@ -99,32 +99,39 @@ export class WebSocketTrigger implements INodeType {
     async function handleOpen (this: ITriggerFunctions): Promise<void> {
       const openEventCode = this.getNodeParameter('openEventCode', 0) as string
 
-      const ctx = {
-        $auth: auth,
-        $getNodeParameter: this.getNodeParameter,
-        $getWorkflowStaticData: this.getWorkflowStaticData,
-        helpers: this.helpers,
+      return await new Promise((resolve, reject) => {
+        const ctx = {
+          $auth: auth,
+          $getNodeParameter: this.getNodeParameter,
+          $getWorkflowStaticData: this.getWorkflowStaticData,
+          helpers: this.helpers,
+          thenCallback: resolve,
+          catchCallback: reject,
 
-        $send: async (data: any, waitResponse = false): Promise<any> => {
-          if (typeof data === 'string') {
-            client.current.send(data)
-          } else {
-            client.current.send(JSON.stringify(data))
-          }
+          $send: async (data: any, waitResponse = false): Promise<any> => {
+            if (typeof data === 'string') {
+              client.current.send(data)
+            } else {
+              client.current.send(JSON.stringify(data))
+            }
 
-          if (waitResponse) {
-            return await new Promise((resolve) => {
-              client.current.once('message', (data) => {
-                resolve(parseMessage(data))
+            if (waitResponse) {
+              return await new Promise((resolve) => {
+                client.current.once('message', (data) => {
+                  resolve(parseMessage(data))
+                })
               })
-            })
+            }
           }
         }
-      }
 
-      const script = new VMScript(`async function main () {${openEventCode}\n} main()`)
-      vmCreateContext(ctx)
-      script.runInContext(ctx)
+        const script = new VMScript(
+          `async function main () {${openEventCode}\n} main().then(thenCallback).catch(catchCallback)`
+        )
+
+        vmCreateContext(ctx)
+        script.runInContext(ctx)
+      })
     }
 
     async function handleConnect (this: ITriggerFunctions): Promise<void> {
